@@ -1,0 +1,17 @@
+C:\Users\ALEX\minimal-api\src\MinimalApi.Infrastructure\obj\Debug\net9.0\MinimalApi.Infrastructure.csproj.AssemblyReference.cache
+C:\Users\ALEX\minimal-api\src\MinimalApi.Infrastructure\obj\Debug\net9.0\MinimalApi.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\ALEX\minimal-api\src\MinimalApi.Infrastructure\obj\Debug\net9.0\MinimalApi.Infrastructure.AssemblyInfoInputs.cache
+C:\Users\ALEX\minimal-api\src\MinimalApi.Infrastructure\obj\Debug\net9.0\MinimalApi.Infrastructure.AssemblyInfo.cs
+C:\Users\ALEX\minimal-api\src\MinimalApi.Infrastructure\obj\Debug\net9.0\MinimalApi.Infrastructure.csproj.CoreCompileInputs.cache
+C:\Users\ALEX\minimal-api\src\MinimalApi.Infrastructure\bin\Debug\net9.0\MinimalApi.Infrastructure.deps.json
+C:\Users\ALEX\minimal-api\src\MinimalApi.Infrastructure\bin\Debug\net9.0\MinimalApi.Infrastructure.runtimeconfig.json
+C:\Users\ALEX\minimal-api\src\MinimalApi.Infrastructure\bin\Debug\net9.0\MinimalApi.Infrastructure.dll
+C:\Users\ALEX\minimal-api\src\MinimalApi.Infrastructure\bin\Debug\net9.0\MinimalApi.Infrastructure.pdb
+C:\Users\ALEX\minimal-api\src\MinimalApi.Infrastructure\bin\Debug\net9.0\MinimalApi.Domain.dll
+C:\Users\ALEX\minimal-api\src\MinimalApi.Infrastructure\bin\Debug\net9.0\MinimalApi.Domain.pdb
+C:\Users\ALEX\minimal-api\src\MinimalApi.Infrastructure\obj\Debug\net9.0\MinimalA.3DAE10A7.Up2Date
+C:\Users\ALEX\minimal-api\src\MinimalApi.Infrastructure\obj\Debug\net9.0\MinimalApi.Infrastructure.dll
+C:\Users\ALEX\minimal-api\src\MinimalApi.Infrastructure\obj\Debug\net9.0\refint\MinimalApi.Infrastructure.dll
+C:\Users\ALEX\minimal-api\src\MinimalApi.Infrastructure\obj\Debug\net9.0\MinimalApi.Infrastructure.pdb
+C:\Users\ALEX\minimal-api\src\MinimalApi.Infrastructure\obj\Debug\net9.0\MinimalApi.Infrastructure.genruntimeconfig.cache
+C:\Users\ALEX\minimal-api\src\MinimalApi.Infrastructure\obj\Debug\net9.0\ref\MinimalApi.Infrastructure.dll

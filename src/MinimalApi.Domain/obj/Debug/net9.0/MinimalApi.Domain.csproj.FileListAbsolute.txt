@@ -1,0 +1,11 @@
+C:\Users\ALEX\minimal-api\src\MinimalApi.Domain\bin\Debug\net9.0\MinimalApi.Domain.deps.json
+C:\Users\ALEX\minimal-api\src\MinimalApi.Domain\bin\Debug\net9.0\MinimalApi.Domain.dll
+C:\Users\ALEX\minimal-api\src\MinimalApi.Domain\bin\Debug\net9.0\MinimalApi.Domain.pdb
+C:\Users\ALEX\minimal-api\src\MinimalApi.Domain\obj\Debug\net9.0\MinimalApi.Domain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\ALEX\minimal-api\src\MinimalApi.Domain\obj\Debug\net9.0\MinimalApi.Domain.AssemblyInfoInputs.cache
+C:\Users\ALEX\minimal-api\src\MinimalApi.Domain\obj\Debug\net9.0\MinimalApi.Domain.AssemblyInfo.cs
+C:\Users\ALEX\minimal-api\src\MinimalApi.Domain\obj\Debug\net9.0\MinimalApi.Domain.csproj.CoreCompileInputs.cache
+C:\Users\ALEX\minimal-api\src\MinimalApi.Domain\obj\Debug\net9.0\MinimalApi.Domain.dll
+C:\Users\ALEX\minimal-api\src\MinimalApi.Domain\obj\Debug\net9.0\refint\MinimalApi.Domain.dll
+C:\Users\ALEX\minimal-api\src\MinimalApi.Domain\obj\Debug\net9.0\MinimalApi.Domain.pdb
+C:\Users\ALEX\minimal-api\src\MinimalApi.Domain\obj\Debug\net9.0\ref\MinimalApi.Domain.dll

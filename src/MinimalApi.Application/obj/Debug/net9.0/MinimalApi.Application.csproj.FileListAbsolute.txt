@@ -1,0 +1,17 @@
+C:\Users\ALEX\minimal-api\src\MinimalApi.Application\bin\Debug\net9.0\MinimalApi.Application.deps.json
+C:\Users\ALEX\minimal-api\src\MinimalApi.Application\bin\Debug\net9.0\MinimalApi.Application.dll
+C:\Users\ALEX\minimal-api\src\MinimalApi.Application\bin\Debug\net9.0\MinimalApi.Application.pdb
+C:\Users\ALEX\minimal-api\src\MinimalApi.Application\bin\Debug\net9.0\MinimalApi.Domain.dll
+C:\Users\ALEX\minimal-api\src\MinimalApi.Application\bin\Debug\net9.0\MinimalApi.Infrastructure.dll
+C:\Users\ALEX\minimal-api\src\MinimalApi.Application\bin\Debug\net9.0\MinimalApi.Domain.pdb
+C:\Users\ALEX\minimal-api\src\MinimalApi.Application\bin\Debug\net9.0\MinimalApi.Infrastructure.pdb
+C:\Users\ALEX\minimal-api\src\MinimalApi.Application\obj\Debug\net9.0\MinimalApi.Application.csproj.AssemblyReference.cache
+C:\Users\ALEX\minimal-api\src\MinimalApi.Application\obj\Debug\net9.0\MinimalApi.Application.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\ALEX\minimal-api\src\MinimalApi.Application\obj\Debug\net9.0\MinimalApi.Application.AssemblyInfoInputs.cache
+C:\Users\ALEX\minimal-api\src\MinimalApi.Application\obj\Debug\net9.0\MinimalApi.Application.AssemblyInfo.cs
+C:\Users\ALEX\minimal-api\src\MinimalApi.Application\obj\Debug\net9.0\MinimalApi.Application.csproj.CoreCompileInputs.cache
+C:\Users\ALEX\minimal-api\src\MinimalApi.Application\obj\Debug\net9.0\MinimalA.E140A854.Up2Date
+C:\Users\ALEX\minimal-api\src\MinimalApi.Application\obj\Debug\net9.0\MinimalApi.Application.dll
+C:\Users\ALEX\minimal-api\src\MinimalApi.Application\obj\Debug\net9.0\refint\MinimalApi.Application.dll
+C:\Users\ALEX\minimal-api\src\MinimalApi.Application\obj\Debug\net9.0\MinimalApi.Application.pdb
+C:\Users\ALEX\minimal-api\src\MinimalApi.Application\obj\Debug\net9.0\ref\MinimalApi.Application.dll

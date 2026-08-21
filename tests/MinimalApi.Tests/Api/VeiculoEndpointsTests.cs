@@ -2,243 +2,238 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Xunit;
+using Microsoft.Extensions.DependencyInjection;
 using MinimalApi.Domain.Entidades;
 using MinimalApi.Domain.Entidades.DTOs;
 using MinimalApi.Infrastructure.DB;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
+using Xunit;
 
-namespace MinimalApi.Tests.Api
+namespace MinimalApi.Tests.Api;
+
+public class VeiculoEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
 {
-    public class VeiculoEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
+    private readonly WebApplicationFactory<Program> _factory;
+    private string _adminToken = string.Empty;
+    private string _editorToken = string.Empty;
+
+    public VeiculoEndpointsTests(WebApplicationFactory<Program> factory)
     {
-        private readonly WebApplicationFactory<Program> _factory;
-        private string _adminToken = string.Empty;
-        private string _editorToken = string.Empty;
+        _factory = factory.WithWebHostBuilder(builder =>
+            TestWebHost.Configure(builder, $"VeiculoEndpointsTests-{Guid.NewGuid()}"));
 
-        public VeiculoEndpointsTests(WebApplicationFactory<Program> factory)
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<DbContexto>();
+        db.Database.EnsureCreated();
+
+        if (!db.Administradores.Any(a => a.Email == "admin@test.com"))
         {
-            _factory = factory.WithWebHostBuilder(builder =>
-            {
-                builder.ConfigureServices(services =>
+            db.Administradores.AddRange(
+                new Administrador
                 {
-                    // Remove the existing DbContext registration
-                    var descriptor = services.SingleOrDefault(
-                        d => d.ServiceType == typeof(DbContextOptions<DbContexto>));
-                    if (descriptor != null)
-                    {
-                        services.Remove(descriptor);
-                    }
-
-                    // Add an in-memory database for testing
-                    services.AddDbContext<DbContexto>(options =>
-                    {
-                        options.UseInMemoryDatabase("TestDbForVeiculos");
-                    });
-
-                    // Seed the database with test admins
-                    var sp = services.BuildServiceProvider();
-                    using (var scope = sp.CreateScope())
-                    {
-                        var scopedServices = scope.ServiceProvider;
-                        var db = scopedServices.GetRequiredService<DbContexto>();
-                        db.Database.EnsureCreated();
-
-                        if (!db.Administradores.Any())
-                        {
-                            db.Administradores.Add(new Administrador { Email = "admin@test.com", Senha = "password", Perfil = "Admin" });
-                            db.Administradores.Add(new Administrador { Email = "editor@test.com", Senha = "password", Perfil = "Editor" });
-                            db.SaveChanges();
-                        }
-                    }
+                    Email = "admin@test.com",
+                    Senha = "password",
+                    Perfil = "Admin"
+                },
+                new Administrador
+                {
+                    Email = "editor@test.com",
+                    Senha = "password",
+                    Perfil = "Editor"
                 });
-            });
+            db.SaveChanges();
         }
+    }
 
-        private async Task<string> GetToken(string email, string password)
+    private async Task<string> GetToken(string email, string password)
+    {
+        var client = _factory.CreateClient();
+        var loginDto = new LoginDTO { Email = email, Senha = password };
+        var response = await client.PostAsJsonAsync("/login", loginDto);
+        response.EnsureSuccessStatusCode();
+
+        var body = await response.Content.ReadFromJsonAsync<TokenResponse>();
+        Assert.NotNull(body);
+        return body.Token;
+    }
+
+    private async Task EnsureTokensAreAvailable()
+    {
+        if (string.IsNullOrEmpty(_adminToken))
+            _adminToken = await GetToken("admin@test.com", "password");
+
+        if (string.IsNullOrEmpty(_editorToken))
+            _editorToken = await GetToken("editor@test.com", "password");
+    }
+
+    [Fact]
+    public async Task PostVeiculo_Admin_ReturnsCreated()
+    {
+        await EnsureTokensAreAvailable();
+        var client = CreateAuthorizedClient(_adminToken);
+        var veiculo = NovoVeiculo("Ford", "Focus", 2020, "Preto");
+
+        var response = await client.PostAsJsonAsync("/veiculos", veiculo);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var created = await response.Content.ReadFromJsonAsync<Veiculo>();
+        Assert.NotNull(created);
+        Assert.True(created.Id > 0);
+    }
+
+    [Fact]
+    public async Task PostVeiculo_Editor_ReturnsForbidden()
+    {
+        await EnsureTokensAreAvailable();
+        var client = CreateAuthorizedClient(_editorToken);
+
+        var response = await client.PostAsJsonAsync(
+            "/veiculos",
+            NovoVeiculo("Ford", "Focus", 2020, "Preto"));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetVeiculos_Editor_ReturnsOk()
+    {
+        await EnsureTokensAreAvailable();
+        var client = CreateAuthorizedClient(_editorToken);
+
+        var response = await client.GetAsync("/veiculos");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(await response.Content.ReadFromJsonAsync<List<Veiculo>>());
+    }
+
+    [Fact]
+    public async Task GetVeiculoById_Editor_ReturnsOk()
+    {
+        await EnsureTokensAreAvailable();
+        var adminClient = CreateAuthorizedClient(_adminToken);
+        var postResponse = await adminClient.PostAsJsonAsync(
+            "/veiculos",
+            NovoVeiculo("VW", "Gol", 2022, "Branco"));
+        var created = await postResponse.Content.ReadFromJsonAsync<Veiculo>();
+        Assert.NotNull(created);
+
+        var editorClient = CreateAuthorizedClient(_editorToken);
+        var response = await editorClient.GetAsync($"/veiculos/{created.Id}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var retrieved = await response.Content.ReadFromJsonAsync<Veiculo>();
+        Assert.NotNull(retrieved);
+        Assert.Equal(created.Id, retrieved.Id);
+    }
+
+    [Fact]
+    public async Task GetVeiculoById_Inexistente_ReturnsNotFound()
+    {
+        await EnsureTokensAreAvailable();
+        var client = CreateAuthorizedClient(_editorToken);
+
+        var response = await client.GetAsync("/veiculos/999999");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetVeiculos_SemToken_ReturnsUnauthorized()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.GetAsync("/veiculos");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PutVeiculo_Admin_ReturnsNoContent()
+    {
+        await EnsureTokensAreAvailable();
+        var client = CreateAuthorizedClient(_adminToken);
+        var postResponse = await client.PostAsJsonAsync(
+            "/veiculos",
+            NovoVeiculo("Fiat", "Uno", 2015, "Vermelho"));
+        var created = await postResponse.Content.ReadFromJsonAsync<Veiculo>();
+        Assert.NotNull(created);
+
+        created.Cor = "Azul";
+        var response = await client.PutAsJsonAsync($"/veiculos/{created.Id}", created);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PutVeiculo_Editor_ReturnsForbidden()
+    {
+        await EnsureTokensAreAvailable();
+        var adminClient = CreateAuthorizedClient(_adminToken);
+        var postResponse = await adminClient.PostAsJsonAsync(
+            "/veiculos",
+            NovoVeiculo("Chevrolet", "Onix", 2023, "Cinza"));
+        var created = await postResponse.Content.ReadFromJsonAsync<Veiculo>();
+        Assert.NotNull(created);
+
+        var editorClient = CreateAuthorizedClient(_editorToken);
+        created.Cor = "Preto";
+        var response = await editorClient.PutAsJsonAsync($"/veiculos/{created.Id}", created);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteVeiculo_Admin_ReturnsNoContent()
+    {
+        await EnsureTokensAreAvailable();
+        var client = CreateAuthorizedClient(_adminToken);
+        var postResponse = await client.PostAsJsonAsync(
+            "/veiculos",
+            NovoVeiculo("Hyundai", "HB20", 2021, "Prata"));
+        var created = await postResponse.Content.ReadFromJsonAsync<Veiculo>();
+        Assert.NotNull(created);
+
+        var response = await client.DeleteAsync($"/veiculos/{created.Id}");
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteVeiculo_Editor_ReturnsForbidden()
+    {
+        await EnsureTokensAreAvailable();
+        var adminClient = CreateAuthorizedClient(_adminToken);
+        var postResponse = await adminClient.PostAsJsonAsync(
+            "/veiculos",
+            NovoVeiculo("Renault", "Kwid", 2019, "Laranja"));
+        var created = await postResponse.Content.ReadFromJsonAsync<Veiculo>();
+        Assert.NotNull(created);
+
+        var editorClient = CreateAuthorizedClient(_editorToken);
+        var response = await editorClient.DeleteAsync($"/veiculos/{created.Id}");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    private HttpClient CreateAuthorizedClient(string token)
+    {
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", token);
+        return client;
+    }
+
+    private static Veiculo NovoVeiculo(
+        string marca,
+        string modelo,
+        int ano,
+        string cor)
+    {
+        return new Veiculo
         {
-            var client = _factory.CreateClient();
-            var loginDto = new LoginDTO { Email = email, Senha = password };
-            var response = await client.PostAsJsonAsync("/login", loginDto);
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadAsStringAsync();
-        }
-
-        private async Task EnsureTokensAreAvailable()
-        {
-            if (string.IsNullOrEmpty(_adminToken))
-            {
-                _adminToken = await GetToken("admin@test.com", "password");
-            }
-            if (string.IsNullOrEmpty(_editorToken))
-            {
-                _editorToken = await GetToken("editor@test.com", "password");
-            }
-        }
-
-        [Fact]
-        public async Task PostVeiculo_Admin_ReturnsCreated()
-        {
-            // Arrange
-            await EnsureTokensAreAvailable();
-            var client = _factory.CreateClient();
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _adminToken);
-            var veiculo = new Veiculo { Marca = "Ford", Modelo = "Focus", Ano = 2020, Cor = "Preto" };
-
-            // Act
-            var response = await client.PostAsJsonAsync("/veiculos", veiculo);
-
-            // Assert
-            response.EnsureSuccessStatusCode();
-            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-            var createdVeiculo = await response.Content.ReadFromJsonAsync<Veiculo>();
-            Assert.NotNull(createdVeiculo);
-            Assert.True(createdVeiculo.Id > 0);
-        }
-
-        [Fact]
-        public async Task PostVeiculo_Editor_ReturnsForbidden()
-        {
-            // Arrange
-            await EnsureTokensAreAvailable();
-            var client = _factory.CreateClient();
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _editorToken);
-            var veiculo = new Veiculo { Marca = "Ford", Modelo = "Focus", Ano = 2020, Cor = "Preto" };
-
-            // Act
-            var response = await client.PostAsJsonAsync("/veiculos", veiculo);
-
-            // Assert
-            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-        }
-
-        [Fact]
-        public async Task GetVeiculos_Editor_ReturnsOkAndVeiculos()
-        {
-            // Arrange
-            await EnsureTokensAreAvailable();
-            var client = _factory.CreateClient();
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _editorToken);
-
-            // Act
-            var response = await client.GetAsync("/veiculos");
-
-            // Assert
-            response.EnsureSuccessStatusCode();
-            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-            var veiculos = await response.Content.ReadFromJsonAsync<List<Veiculo>>();
-            Assert.NotNull(veiculos);
-        }
-
-        [Fact]
-        public async Task GetVeiculoById_Editor_ReturnsOkAndVeiculo()
-        {
-            // Arrange
-            await EnsureTokensAreAvailable();
-            var client = _factory.CreateClient();
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _adminToken);
-            var veiculo = new Veiculo { Marca = "VW", Modelo = "Gol", Ano = 2022, Cor = "Branco" };
-            var postResponse = await client.PostAsJsonAsync("/veiculos", veiculo);
-            postResponse.EnsureSuccessStatusCode();
-            var createdVeiculo = await postResponse.Content.ReadFromJsonAsync<Veiculo>();
-
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _editorToken);
-
-            // Act
-            var getResponse = await client.GetAsync($"/veiculos/{createdVeiculo.Id}");
-
-            // Assert
-            getResponse.EnsureSuccessStatusCode();
-            Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
-            var retrievedVeiculo = await getResponse.Content.ReadFromJsonAsync<Veiculo>();
-            Assert.NotNull(retrievedVeiculo);
-            Assert.Equal(createdVeiculo.Id, retrievedVeiculo.Id);
-        }
-
-        [Fact]
-        public async Task PutVeiculo_Admin_ReturnsNoContent()
-        {
-            // Arrange
-            await EnsureTokensAreAvailable();
-            var client = _factory.CreateClient();
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _adminToken);
-            var veiculo = new Veiculo { Marca = "Fiat", Modelo = "Uno", Ano = 2015, Cor = "Vermelho" };
-            var postResponse = await client.PostAsJsonAsync("/veiculos", veiculo);
-            postResponse.EnsureSuccessStatusCode();
-            var createdVeiculo = await postResponse.Content.ReadFromJsonAsync<Veiculo>();
-
-            createdVeiculo.Cor = "Azul";
-
-            // Act
-            var putResponse = await client.PutAsJsonAsync($"/veiculos/{createdVeiculo.Id}", createdVeiculo);
-
-            // Assert
-            putResponse.EnsureSuccessStatusCode();
-            Assert.Equal(HttpStatusCode.NoContent, putResponse.StatusCode);
-        }
-
-        [Fact]
-        public async Task PutVeiculo_Editor_ReturnsForbidden()
-        {
-            // Arrange
-            await EnsureTokensAreAvailable();
-            var client = _factory.CreateClient();
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _adminToken);
-            var veiculo = new Veiculo { Marca = "Chevrolet", Modelo = "Onix", Ano = 2023, Cor = "Cinza" };
-            var postResponse = await client.PostAsJsonAsync("/veiculos", veiculo);
-            postResponse.EnsureSuccessStatusCode();
-            var createdVeiculo = await postResponse.Content.ReadFromJsonAsync<Veiculo>();
-
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _editorToken);
-            createdVeiculo.Cor = "Preto";
-
-            // Act
-            var putResponse = await client.PutAsJsonAsync($"/veiculos/{createdVeiculo.Id}", createdVeiculo);
-
-            // Assert
-            Assert.Equal(HttpStatusCode.Forbidden, putResponse.StatusCode);
-        }
-
-        [Fact]
-        public async Task DeleteVeiculo_Admin_ReturnsNoContent()
-        {
-            // Arrange
-            await EnsureTokensAreAvailable();
-            var client = _factory.CreateClient();
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _adminToken);
-            var veiculo = new Veiculo { Marca = "Hyundai", Modelo = "HB20", Ano = 2021, Cor = "Prata" };
-            var postResponse = await client.PostAsJsonAsync("/veiculos", veiculo);
-            postResponse.EnsureSuccessStatusCode();
-            var createdVeiculo = await postResponse.Content.ReadFromJsonAsync<Veiculo>();
-
-            // Act
-            var deleteResponse = await client.DeleteAsync($"/veiculos/{createdVeiculo.Id}");
-
-            // Assert
-            deleteResponse.EnsureSuccessStatusCode();
-            Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
-        }
-
-        [Fact]
-        public async Task DeleteVeiculo_Editor_ReturnsForbidden()
-        {
-            // Arrange
-            await EnsureTokensAreAvailable();
-            var client = _factory.CreateClient();
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _adminToken);
-            var veiculo = new Veiculo { Marca = "Renault", Modelo = "Kwid", Ano = 2019, Cor = "Laranja" };
-            var postResponse = await client.PostAsJsonAsync("/veiculos", veiculo);
-            postResponse.EnsureSuccessStatusCode();
-            var createdVeiculo = await postResponse.Content.ReadFromJsonAsync<Veiculo>();
-
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _editorToken);
-
-            // Act
-            var deleteResponse = await client.DeleteAsync($"/veiculos/{createdVeiculo.Id}");
-
-            // Assert
-            Assert.Equal(HttpStatusCode.Forbidden, deleteResponse.StatusCode);
-        }
+            Marca = marca,
+            Modelo = modelo,
+            Ano = ano,
+            Cor = cor
+        };
     }
 }

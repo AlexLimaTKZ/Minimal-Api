@@ -1,12 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\MinimalApi.Domain\MinimalApi.Domain.csproj" />
-    <ProjectReference Include="..\MinimalApi.Infrastructure\MinimalApi.Infrastructure.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.8" />
   </ItemGroup>
 
   <PropertyGroup>

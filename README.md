@@ -1,115 +1,140 @@
-# minimal-api
+# 🚀 Minimal API com C# — do zero ao projeto completo
 
-Este projeto é uma API mínima desenvolvida com ASP.NET Core, projetada para fornecer um backend leve e eficiente para aplicações web e móveis. Ele visa simplificar o desenvolvimento de APIs, focando na entrega rápida de funcionalidades essenciais e na facilidade de manutenção.
+Este repositório é uma **trilha prática para aprender ASP.NET Core Minimal API com C#**, construída para quem quer entender o que está fazendo — e não apenas copiar código.
 
-## Instalação e Configuração
+A abordagem usa a técnica de **Feynman**: primeiro explicamos a ideia em linguagem simples, depois criamos um modelo mental, só então escrevemos o código e, no fim, você tenta explicar com suas próprias palavras.
 
-Para configurar e executar este projeto localmente, siga os passos abaixo:
+> Se você nunca criou uma API, comece pela **[Aula 00 — Comece aqui](aulas/00-comece-aqui.md)**.
 
-### Pré-requisitos
+## 🎯 O que você vai construir
 
-*   [.NET SDK](https://dotnet.microsoft.com/download) (versão 8.0 ou superior)
-*   Um servidor MySQL em execução
+Ao longo da trilha, uma API de veículos evolui por etapas:
 
-### Passos
+```text
+Olá Mundo
+   ↓
+Endpoints HTTP
+   ↓
+CRUD em memória
+   ↓
+DTO + validação
+   ↓
+Injeção de dependência
+   ↓
+Entity Framework Core
+   ↓
+MySQL + migrations
+   ↓
+Swagger/OpenAPI
+   ↓
+JWT + roles
+   ↓
+Arquitetura em camadas
+   ↓
+Testes automatizados
+```
 
-1.  **Clone o repositório:**
-    ```bash
-    git clone <URL_DO_SEU_REPOSITORIO>
-    cd minimal-api
-    ```
-2.  **Restaure as dependências:**
-    ```bash
-    dotnet restore
-    ```
-3.  **Configure a conexão com o banco de dados:**
-    Abra o arquivo `src/MinimalApi.Api/appsettings.json` (e `appsettings.Development.json` para ambiente de desenvolvimento) e atualize a string de conexão do MySQL:
-    ```json
-    {
-      "ConnectionStrings": {
-        "DefaultConnection": "Server=localhost;Port=3306;Database=your_database_name;Uid=your_username;Pwd=your_password;"
-      },
-      // ... outras configurações
-    }
-    ```
-    Certifique-se de que o banco de dados `your_database_name` exista ou crie-o.
+No final, você entenderá como o projeto completo em `src/` funciona e por que ele foi organizado dessa forma.
 
-4.  **Aplique as migrações do banco de dados (Entity Framework Core):**
-    Navegue até o diretório do projeto da API:
-    ```bash
-    cd src/MinimalApi.Api
-    ```
-    Execute as migrações:
-    ```bash
-    dotnet ef database update
-    ```
-    Se você precisar criar uma nova migração:
-    ```bash
-    dotnet ef migrations add NomeDaSuaMigracao
-    ```
-    (Certifique-se de ter a ferramenta `dotnet ef` instalada: `dotnet tool install --global dotnet-ef`)
+## 🧠 Como estudar com Feynman
 
-5.  **Construa o projeto:**
-    Navegue de volta para a raiz do projeto:
-    ```bash
-    cd ../..
-    dotnet build
-    ```
+Em cada aula, siga este ciclo:
 
-6.  **Execute a aplicação:**
-    ```bash
-    dotnet run --project src/MinimalApi.Api
-    ```
-    A API estará disponível em `https://localhost:<porta_gerada_automaticamente>`.
+```text
+1. Entenda o problema
+        ↓
+2. Explique de forma simples
+        ↓
+3. Veja o modelo mental
+        ↓
+4. Escreva o código
+        ↓
+5. Explique o código sem olhar
+        ↓
+6. Faça o desafio
+```
 
-## Documentação da API
+Se você não consegue explicar uma parte sem usar palavras complicadas, volte nela. Essa dificuldade mostra exatamente onde ainda existe uma lacuna.
 
-Após iniciar a aplicação, a documentação interativa da API (Swagger/OpenAPI) estará disponível no seguinte endereço:
+## 🗺️ Trilha completa
 
-`https://localhost:<porta_gerada_automaticamente>/swagger`
+| # | Aula | O que você aprende |
+|---|---|---|
+| 00 | [Comece aqui](aulas/00-comece-aqui.md) | ambiente, pré-requisitos e como estudar |
+| 01 | [O que é uma API?](aulas/01-o-que-e-uma-api.md) | cliente, servidor, API e request/response |
+| 02 | [Primeira Minimal API](aulas/02-primeira-minimal-api.md) | `WebApplication`, `MapGet` e `Run` |
+| 03 | [HTTP sem complicação](aulas/03-http-sem-complicacao.md) | métodos, status codes e JSON |
+| 04 | [Endpoints](aulas/04-entendendo-endpoints.md) | rota, método e handler |
+| 05 | [Parâmetros e dados de entrada](aulas/05-parametros-e-dados-de-entrada.md) | route, query e body |
+| 06 | [CRUD em memória](aulas/06-crud-em-memoria.md) | GET, POST, PUT e DELETE sem banco |
+| 07 | [DTOs e validação](aulas/07-dtos-e-validacao.md) | contratos de entrada e dados válidos |
+| 08 | [Injeção de dependência](aulas/08-injecao-de-dependencia.md) | DI, interfaces e serviços |
+| 09 | [Entity Framework Core](aulas/09-entity-framework-core.md) | ORM, `DbContext` e `DbSet` |
+| 10 | [MySQL e migrations](aulas/10-mysql-e-migrations.md) | persistência e evolução do schema |
+| 11 | [Swagger e OpenAPI](aulas/11-swagger-openapi.md) | documentação e teste dos endpoints |
+| 12 | [Autenticação JWT](aulas/12-autenticacao-jwt.md) | login, token e Bearer |
+| 13 | [Roles e autorização](aulas/13-roles-e-autorizacao.md) | autenticação x autorização e policies |
+| 14 | [Arquitetura em camadas](aulas/14-arquitetura-em-camadas.md) | Api, Application, Domain e Infrastructure |
+| 15 | [Testes automatizados](aulas/15-testes-automatizados.md) | unitários, integração e `dotnet test` |
 
-Você pode usar esta interface para explorar os endpoints disponíveis, testar requisições e entender a estrutura das respostas.
+## 🧪 Aprender fazendo
 
-## Tecnologias Utilizadas
+Depois das aulas, use os [desafios](desafios/README.md). As soluções ficam separadas em `desafios/solucoes/` para você tentar antes de consultar.
 
-*   **ASP.NET Core Minimal API:** Framework para construção de APIs web leves e de alta performance.
-*   **C#:** Linguagem de programação.
-*   **.NET 8.0 / 9.0:** Plataforma de desenvolvimento.
-*   **Entity Framework Core:** ORM (Object-Relational Mapper) para interação com o banco de dados.
-*   **MySQL:** Sistema de gerenciamento de banco de dados relacional.
+Quando terminar, faça o **[projeto final guiado](projeto-final/README.md)** e construa a API novamente sem seguir um tutorial linha por linha.
 
-## Como Realizar Testes
+## 📦 Exemplos pequenos
 
-Os testes unitários e de integração estão localizados no projeto `tests/MinimalApi.Tests`. Para executá-los:
+A pasta `exemplos/` contém versões reduzidas para estudar uma ideia sem carregar toda a complexidade do projeto final:
 
-1.  Navegue até a raiz do projeto.
-2.  Execute o comando:
-    ```bash
-    dotnet test
-    ```
+- `01-hello-world`: a menor Minimal API possível;
+- `02-crud-memoria`: CRUD completo sem banco de dados.
 
-## Como Contribuir
+## 🏗️ Projeto final existente
 
-Agradecemos o seu interesse em contribuir! Para contribuir com este projeto, siga os passos abaixo:
+O código em `src/` representa uma evolução mais próxima de um projeto real:
 
-1.  Faça um fork deste repositório.
-2.  Crie uma nova branch para sua feature ou correção de bug (`git checkout -b feature/sua-feature` ou `bugfix/sua-correcao`).
-3.  Faça suas alterações e certifique-se de que os testes passem.
-4.  Faça commit de suas alterações (`git commit -m 'feat: Adiciona nova feature'`).
-5.  Envie sua branch para o seu fork (`git push origin feature/sua-feature`).
-6.  Abra um Pull Request para a branch `main` deste repositório.
+```text
+src/
+├── MinimalApi.Api
+├── MinimalApi.Application
+├── MinimalApi.Domain
+└── MinimalApi.Infrastructure
+```
 
-## Links
+Não comece por ele se você for iniciante. Primeiro construa a versão simples e entenda cada degrau; depois a arquitetura completa deixa de parecer “mágica”.
 
-Aqui estão alguns links úteis para criar um projeto como este:
+## ▶️ Executando o projeto completo
 
--   [.NET SDK](https://dotnet.microsoft.com/download)
--   [ASP.NET Core Documentation](https://docs.microsoft.com/en-us/aspnet/core/?view=aspnetcore-8.0)
--   [Entity Framework Core Documentation](https://docs.microsoft.com/en-us/ef/core/)
--   [MySQL Official Website](https://www.mysql.com/)
--   [Pomelo.EntityFrameworkCore.MySql GitHub](https://github.com/PomeloFoundation/Pomelo.EntityFrameworkCore.MySql)
--   [JWT (JSON Web Tokens) Official Website](https://jwt.io/)
+O projeto atual usa **.NET 9**.
 
-## Autor
+```bash
+dotnet restore
+dotnet build
+dotnet run --project src/MinimalApi.Api
+```
 
-Alex S. Lima
+Para os recursos que usam MySQL/JWT, configure os segredos localmente conforme a [Aula 10](aulas/10-mysql-e-migrations.md). O repositório não deve armazenar senhas ou chaves reais.
+
+Para executar os testes:
+
+```bash
+dotnet test
+```
+
+## 🔐 Segurança importante
+
+Nunca publique senha de banco, token ou chave JWT no GitHub. Este projeto usa configuração vazia no `appsettings.json`; valores locais devem ser fornecidos por **User Secrets** ou variáveis de ambiente.
+
+> Se uma credencial já foi publicada no histórico Git, removê-la do arquivo atual não é suficiente: ela deve ser **rotacionada**.
+
+## 📚 Documentação oficial
+
+- [.NET](https://dotnet.microsoft.com/)
+- [ASP.NET Core Minimal APIs](https://learn.microsoft.com/aspnet/core/fundamentals/minimal-apis)
+- [Entity Framework Core](https://learn.microsoft.com/ef/core/)
+- [ASP.NET Core Authentication](https://learn.microsoft.com/aspnet/core/security/authentication/)
+
+---
+
+**Objetivo do repositório:** você deve terminar a trilha conseguindo explicar, sem decorar, o caminho completo de uma requisição HTTP até o banco de dados e de volta ao cliente.

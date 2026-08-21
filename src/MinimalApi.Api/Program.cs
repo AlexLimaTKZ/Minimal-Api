@@ -1,21 +1,38 @@
-using MinimalApi.Infrastructure.DB;
-using MinimalApi.Domain.Entidades.DTOs;
-using MinimalApi.Domain.Entidades;
-using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using MinimalApi.Application.Services;
+using MinimalApi.Domain.Entidades;
+using MinimalApi.Domain.Entidades.DTOs;
 using MinimalApi.Domain.Interfaces;
+using MinimalApi.Infrastructure.DB;
+using MinimalApi.Infrastructure.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+var connectionString = builder.Configuration.GetConnectionString("mysql");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException(
+        "Configure 'ConnectionStrings:mysql' com User Secrets ou variável de ambiente. Consulte aulas/10-mysql-e-migrations.md.");
+}
+
+var jwtKey = builder.Configuration["Jwt:Key"];
+if (string.IsNullOrWhiteSpace(jwtKey))
+{
+    throw new InvalidOperationException(
+        "Configure 'Jwt:Key' com User Secrets ou variável de ambiente. Nunca versione uma chave real.");
+}
+
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "MinimalApi";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "MinimalApi";
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -26,60 +43,57 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
         };
     });
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("AdminPolicy", policy => policy.RequireRole("Admin"));
-    options.AddPolicy("EditorPolicy", policy => policy.RequireRole("Editor", "Admin"));
+    options.AddPolicy("AdminPolicy", policy => policy.RequireRole("Admin", "Adm"));
+    options.AddPolicy("EditorPolicy", policy => policy.RequireRole("Editor", "Admin", "Adm"));
 });
 
+builder.Services.AddScoped<IAdministradorRepositorio, AdministradorRepositorio>();
 builder.Services.AddScoped<IAdministradorServico, AdministradorServico>();
 
 builder.Services.AddDbContext<DbContexto>(options =>
 {
     options.UseMySql(
-        builder.Configuration.GetConnectionString("mysql"),
-        ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("mysql"))
-    );
+        connectionString,
+        new MySqlServerVersion(new Version(8, 0, 0)));
 });
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI(options =>
-    {
-        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Minimal API v1");
-        options.RoutePrefix = string.Empty; // Set Swagger UI at the app's root
-    });
+    app.UseSwaggerUI();
 }
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/", () => "Olá Mundo!");
-
-app.MapPost("/login", async (LoginDTO loginDTO, IAdministradorServico administradorServico, IConfiguration configuration) =>
+app.MapGet("/", () => Results.Ok(new
 {
-    // IMPORTANT SECURITY NOTE: In a real-world application, passwords MUST be hashed and salted.
-    // This example uses plain text passwords for simplicity, but this is NOT secure for production.
-    var admin = await administradorServico.GetAdministradorByEmailAndSenha(loginDTO.Email, loginDTO.Senha);
+    mensagem = "Minimal API em execução",
+    documentacao = "/swagger"
+}));
 
-    if (admin == null)
-    {
+app.MapPost("/login", async (
+    LoginDTO loginDTO,
+    IAdministradorServico administradorServico) =>
+{
+    // ATENÇÃO: o projeto original usa comparação de senha em texto puro
+    // para manter o exemplo pequeno. Veja SECURITY.md antes de usar em produção.
+    var admin = await administradorServico.GetAdministradorByEmailAndSenha(
+        loginDTO.Email,
+        loginDTO.Senha);
+
+    if (admin is null)
         return Results.Unauthorized();
-    }
-
-    var issuer = configuration["Jwt:Issuer"];
-    var audience = configuration["Jwt:Audience"];
-    var key = Encoding.UTF8.GetBytes(configuration["Jwt:Key"]);
 
     var tokenDescriptor = new SecurityTokenDescriptor
     {
@@ -92,60 +106,70 @@ app.MapPost("/login", async (LoginDTO loginDTO, IAdministradorServico administra
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         }),
         Expires = DateTime.UtcNow.AddMinutes(5),
-        Issuer = issuer,
-        Audience = audience,
-        SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha512Signature)
+        Issuer = jwtIssuer,
+        Audience = jwtAudience,
+        SigningCredentials = new SigningCredentials(
+            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            SecurityAlgorithms.HmacSha512Signature)
     };
 
     var tokenHandler = new JwtSecurityTokenHandler();
     var token = tokenHandler.CreateToken(tokenDescriptor);
-    var jwtToken = tokenHandler.WriteToken(token);
 
-    return Results.Ok(jwtToken);
+    return Results.Ok(new
+    {
+        token = tokenHandler.WriteToken(token),
+        expiresInMinutes = 5
+    });
 });
 
-// Endpoints for Veiculo
 app.MapPost("/veiculos", async (Veiculo veiculo, DbContexto db) =>
 {
-    var validationContext = new ValidationContext(veiculo, serviceProvider: null, items: null);
+    var validationContext = new ValidationContext(veiculo);
     var validationResults = new List<ValidationResult>();
 
-    if (!Validator.TryValidateObject(veiculo, validationContext, validationResults, validateAllProperties: true))
+    if (!Validator.TryValidateObject(
+            veiculo,
+            validationContext,
+            validationResults,
+            validateAllProperties: true))
     {
-        return Results.ValidationProblem(validationResults.ToDictionary(vr => vr.MemberNames.First(), vr => new string[] { vr.ErrorMessage ?? "Invalid" }));
+        return Results.ValidationProblem(CriarErrosDeValidacao(validationResults));
     }
 
     db.Veiculos.Add(veiculo);
     await db.SaveChangesAsync();
+
     return Results.Created($"/veiculos/{veiculo.Id}", veiculo);
 }).RequireAuthorization("AdminPolicy");
 
 app.MapGet("/veiculos", async (DbContexto db) =>
+    Results.Ok(await db.Veiculos.ToListAsync()))
+    .RequireAuthorization("EditorPolicy");
+
+app.MapGet("/veiculos/{id:int}", async (int id, DbContexto db) =>
 {
-    return Results.Ok(await db.Veiculos.ToListAsync());
+    var veiculo = await db.Veiculos.FindAsync(id);
+    return veiculo is null ? Results.NotFound() : Results.Ok(veiculo);
 }).RequireAuthorization("EditorPolicy");
 
-app.MapGet("/veiculos/{id}", async (int id, DbContexto db) =>
+app.MapPut("/veiculos/{id:int}", async (int id, Veiculo inputVeiculo, DbContexto db) =>
 {
-    return await db.Veiculos.FindAsync(id)
-        is Veiculo veiculo
-            ? Results.Ok(veiculo)
-            : Results.NotFound();
-}).RequireAuthorization("EditorPolicy");
+    var veiculo = await db.Veiculos.FindAsync(id);
+    if (veiculo is null)
+        return Results.NotFound();
 
-app.MapPut("/veiculos/{id}", async (int id, Veiculo inputVeiculo, DbContexto db) =>
-{
-    var validationContext = new ValidationContext(inputVeiculo, serviceProvider: null, items: null);
+    var validationContext = new ValidationContext(inputVeiculo);
     var validationResults = new List<ValidationResult>();
 
-    if (!Validator.TryValidateObject(inputVeiculo, validationContext, validationResults, validateAllProperties: true))
+    if (!Validator.TryValidateObject(
+            inputVeiculo,
+            validationContext,
+            validationResults,
+            validateAllProperties: true))
     {
-        return Results.ValidationProblem(validationResults.ToDictionary(vr => vr.MemberNames.First(), vr => new string[] { vr.ErrorMessage ?? "Invalid" }));
+        return Results.ValidationProblem(CriarErrosDeValidacao(validationResults));
     }
-
-    var veiculo = await db.Veiculos.FindAsync(id);
-
-    if (veiculo is null) return Results.NotFound();
 
     veiculo.Marca = inputVeiculo.Marca;
     veiculo.Modelo = inputVeiculo.Modelo;
@@ -156,15 +180,34 @@ app.MapPut("/veiculos/{id}", async (int id, Veiculo inputVeiculo, DbContexto db)
     return Results.NoContent();
 }).RequireAuthorization("AdminPolicy");
 
-app.MapDelete("/veiculos/{id}", async (int id, DbContexto db) =>
+app.MapDelete("/veiculos/{id:int}", async (int id, DbContexto db) =>
 {
-    if (await db.Veiculos.FindAsync(id) is Veiculo veiculo)
-    {
-        db.Veiculos.Remove(veiculo);
-        await db.SaveChangesAsync();
-        return Results.NoContent();
-    }
-    return Results.NotFound();
+    var veiculo = await db.Veiculos.FindAsync(id);
+    if (veiculo is null)
+        return Results.NotFound();
+
+    db.Veiculos.Remove(veiculo);
+    await db.SaveChangesAsync();
+
+    return Results.NoContent();
 }).RequireAuthorization("AdminPolicy");
 
 app.Run();
+
+static Dictionary<string, string[]> CriarErrosDeValidacao(
+    IEnumerable<ValidationResult> validationResults)
+{
+    return validationResults
+        .SelectMany(result => result.MemberNames.DefaultIfEmpty("geral")
+            .Select(member => new
+            {
+                Member = member,
+                Message = result.ErrorMessage ?? "Valor inválido"
+            }))
+        .GroupBy(error => error.Member)
+        .ToDictionary(
+            group => group.Key,
+            group => group.Select(error => error.Message).ToArray());
+}
+
+public partial class Program;

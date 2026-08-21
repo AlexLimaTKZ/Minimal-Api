@@ -1,85 +1,87 @@
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Xunit;
-using MinimalApi.Domain.Entidades.DTOs;
-using MinimalApi.Domain.Entidades;
-using MinimalApi.Infrastructure.DB;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using MinimalApi.Domain.Entidades;
+using MinimalApi.Domain.Entidades.DTOs;
+using MinimalApi.Infrastructure.DB;
+using Xunit;
 
-namespace MinimalApi.Tests.Api
+namespace MinimalApi.Tests.Api;
+
+public class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
 {
-    public class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
+    private readonly WebApplicationFactory<Program> _factory;
+
+    public AuthEndpointsTests(WebApplicationFactory<Program> factory)
     {
-        private readonly WebApplicationFactory<Program> _factory;
-
-        public AuthEndpointsTests(WebApplicationFactory<Program> factory)
+        _factory = factory.WithWebHostBuilder(builder =>
         {
-            _factory = factory.WithWebHostBuilder(builder =>
+            TestWebHost.Configure(builder);
+
+            builder.ConfigureServices(services =>
             {
-                builder.ConfigureServices(services =>
+                var descriptor = services.SingleOrDefault(
+                    service => service.ServiceType == typeof(DbContextOptions<DbContexto>));
+
+                if (descriptor is not null)
+                    services.Remove(descriptor);
+
+                services.AddDbContext<DbContexto>(options =>
+                    options.UseInMemoryDatabase("AuthEndpointsTests"));
+
+                using var serviceProvider = services.BuildServiceProvider();
+                using var scope = serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<DbContexto>();
+                db.Database.EnsureCreated();
+
+                if (!db.Administradores.Any())
                 {
-                    // Remove the existing DbContext registration
-                    var descriptor = services.SingleOrDefault(
-                        d => d.ServiceType == typeof(DbContextOptions<DbContexto>));
-                    if (descriptor != null)
+                    db.Administradores.Add(new Administrador
                     {
-                        services.Remove(descriptor);
-                    }
-
-                    // Add an in-memory database for testing
-                    services.AddDbContext<DbContexto>(options =>
-                    {
-                        options.UseInMemoryDatabase("TestDb");
+                        Email = "test@admin.com",
+                        Senha = "password",
+                        Perfil = "Admin"
                     });
-
-                    // Seed the database with a test admin
-                    var sp = services.BuildServiceProvider();
-                    using (var scope = sp.CreateScope())
-                    {
-                        var scopedServices = scope.ServiceProvider;
-                        var db = scopedServices.GetRequiredService<DbContexto>();
-                        db.Database.EnsureCreated();
-
-                        if (!db.Administradores.Any())
-                        {
-                            db.Administradores.Add(new Administrador { Email = "test@admin.com", Senha = "password", Perfil = "Admin" });
-                            db.SaveChanges();
-                        }
-                    }
-                });
+                    db.SaveChanges();
+                }
             });
-        }
+        });
+    }
 
-        [Fact]
-        public async Task Login_ValidCredentials_ReturnsOkAndToken()
+    [Fact]
+    public async Task Login_ValidCredentials_ReturnsOkAndToken()
+    {
+        var client = _factory.CreateClient();
+        var loginDto = new LoginDTO
         {
-            // Arrange
-            var client = _factory.CreateClient();
-            var loginDto = new LoginDTO { Email = "test@admin.com", Senha = "password" };
+            Email = "test@admin.com",
+            Senha = "password"
+        };
 
-            // Act
-            var response = await client.PostAsJsonAsync("/login", loginDto);
+        var response = await client.PostAsJsonAsync("/login", loginDto);
 
-            // Assert
-            response.EnsureSuccessStatusCode(); // Status Code 200-299
-            var token = await response.Content.ReadAsStringAsync();
-            Assert.False(string.IsNullOrEmpty(token));
-        }
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadFromJsonAsync<TokenResponse>();
 
-        [Fact]
-        public async Task Login_InvalidCredentials_ReturnsUnauthorized()
+        Assert.NotNull(body);
+        Assert.False(string.IsNullOrWhiteSpace(body.Token));
+        Assert.Equal(5, body.ExpiresInMinutes);
+    }
+
+    [Fact]
+    public async Task Login_InvalidCredentials_ReturnsUnauthorized()
+    {
+        var client = _factory.CreateClient();
+        var loginDto = new LoginDTO
         {
-            // Arrange
-            var client = _factory.CreateClient();
-            var loginDto = new LoginDTO { Email = "wrong@admin.com", Senha = "wrongpassword" };
+            Email = "wrong@admin.com",
+            Senha = "wrongpassword"
+        };
 
-            // Act
-            var response = await client.PostAsJsonAsync("/login", loginDto);
+        var response = await client.PostAsJsonAsync("/login", loginDto);
 
-            // Assert
-            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        }
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 }

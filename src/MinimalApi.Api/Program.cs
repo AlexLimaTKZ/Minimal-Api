@@ -10,6 +10,7 @@ using MinimalApi.Domain.Entidades;
 using MinimalApi.Domain.Entidades.DTOs;
 using MinimalApi.Domain.Interfaces;
 using MinimalApi.Infrastructure.DB;
+using MinimalApi.Infrastructure.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -50,15 +51,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("AdminPolicy", policy => policy.RequireRole("Admin"));
-    options.AddPolicy("EditorPolicy", policy => policy.RequireRole("Editor", "Admin"));
+    options.AddPolicy("AdminPolicy", policy => policy.RequireRole("Admin", "Adm"));
+    options.AddPolicy("EditorPolicy", policy => policy.RequireRole("Editor", "Admin", "Adm"));
 });
 
+builder.Services.AddScoped<IAdministradorRepositorio, AdministradorRepositorio>();
 builder.Services.AddScoped<IAdministradorServico, AdministradorServico>();
 
 builder.Services.AddDbContext<DbContexto>(options =>
 {
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
+    options.UseMySql(
+        connectionString,
+        new MySqlServerVersion(new Version(8, 0, 0)));
 });
 
 var app = builder.Build();
@@ -130,19 +134,7 @@ app.MapPost("/veiculos", async (Veiculo veiculo, DbContexto db) =>
             validationResults,
             validateAllProperties: true))
     {
-        var errors = validationResults
-            .SelectMany(result => result.MemberNames.DefaultIfEmpty("geral")
-                .Select(member => new
-                {
-                    Member = member,
-                    Message = result.ErrorMessage ?? "Valor inválido"
-                }))
-            .GroupBy(error => error.Member)
-            .ToDictionary(
-                group => group.Key,
-                group => group.Select(error => error.Message).ToArray());
-
-        return Results.ValidationProblem(errors);
+        return Results.ValidationProblem(CriarErrosDeValidacao(validationResults));
     }
 
     db.Veiculos.Add(veiculo);
@@ -176,19 +168,7 @@ app.MapPut("/veiculos/{id:int}", async (int id, Veiculo inputVeiculo, DbContexto
             validationResults,
             validateAllProperties: true))
     {
-        var errors = validationResults
-            .SelectMany(result => result.MemberNames.DefaultIfEmpty("geral")
-                .Select(member => new
-                {
-                    Member = member,
-                    Message = result.ErrorMessage ?? "Valor inválido"
-                }))
-            .GroupBy(error => error.Member)
-            .ToDictionary(
-                group => group.Key,
-                group => group.Select(error => error.Message).ToArray());
-
-        return Results.ValidationProblem(errors);
+        return Results.ValidationProblem(CriarErrosDeValidacao(validationResults));
     }
 
     veiculo.Marca = inputVeiculo.Marca;
@@ -213,5 +193,21 @@ app.MapDelete("/veiculos/{id:int}", async (int id, DbContexto db) =>
 }).RequireAuthorization("AdminPolicy");
 
 app.Run();
+
+static Dictionary<string, string[]> CriarErrosDeValidacao(
+    IEnumerable<ValidationResult> validationResults)
+{
+    return validationResults
+        .SelectMany(result => result.MemberNames.DefaultIfEmpty("geral")
+            .Select(member => new
+            {
+                Member = member,
+                Message = result.ErrorMessage ?? "Valor inválido"
+            }))
+        .GroupBy(error => error.Member)
+        .ToDictionary(
+            group => group.Key,
+            group => group.Select(error => error.Message).ToArray());
+}
 
 public partial class Program;

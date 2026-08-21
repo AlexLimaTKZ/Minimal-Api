@@ -1,24 +1,26 @@
-using Microsoft.EntityFrameworkCore;
 using MinimalApi.Domain.Entidades;
 using MinimalApi.Domain.Interfaces;
-using MinimalApi.Infrastructure.DB;
 
 namespace MinimalApi.Application.Services;
 
 public class AdministradorServico : IAdministradorServico
 {
-    private readonly DbContexto _dbContexto;
+    private readonly IAdministradorRepositorio _repositorio;
 
-    public AdministradorServico(DbContexto dbContexto)
+    public AdministradorServico(IAdministradorRepositorio repositorio)
     {
-        _dbContexto = dbContexto;
+        _repositorio = repositorio;
     }
 
     public async Task<Administrador?> GetAdministradorByEmailAndSenha(string email, string senha)
     {
+        var administrador = await _repositorio.BuscarPorEmailAsync(email);
+
         // Simplificação didática do projeto original.
-        // Em produção, nunca compare ou armazene senhas em texto puro.
-        return await _dbContexto.Administradores
-            .FirstOrDefaultAsync(a => a.Email == email && a.Senha == senha);
+        // Em produção, a senha deve ser validada por hash seguro, nunca por texto puro.
+        if (administrador is null || administrador.Senha != senha)
+            return null;
+
+        return administrador;
     }
 }

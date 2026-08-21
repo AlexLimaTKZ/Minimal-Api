@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MinimalApi.Domain.Entidades;
 using MinimalApi.Domain.Entidades.DTOs;
@@ -20,44 +19,29 @@ public class VeiculoEndpointsTests : IClassFixture<WebApplicationFactory<Program
     public VeiculoEndpointsTests(WebApplicationFactory<Program> factory)
     {
         _factory = factory.WithWebHostBuilder(builder =>
+            TestWebHost.Configure(builder, $"VeiculoEndpointsTests-{Guid.NewGuid()}"));
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<DbContexto>();
+        db.Database.EnsureCreated();
+
+        if (!db.Administradores.Any(a => a.Email == "admin@test.com"))
         {
-            TestWebHost.Configure(builder);
-
-            builder.ConfigureServices(services =>
-            {
-                var descriptor = services.SingleOrDefault(
-                    service => service.ServiceType == typeof(DbContextOptions<DbContexto>));
-
-                if (descriptor is not null)
-                    services.Remove(descriptor);
-
-                services.AddDbContext<DbContexto>(options =>
-                    options.UseInMemoryDatabase("VeiculoEndpointsTests"));
-
-                using var serviceProvider = services.BuildServiceProvider();
-                using var scope = serviceProvider.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<DbContexto>();
-                db.Database.EnsureCreated();
-
-                if (!db.Administradores.Any())
+            db.Administradores.AddRange(
+                new Administrador
                 {
-                    db.Administradores.AddRange(
-                        new Administrador
-                        {
-                            Email = "admin@test.com",
-                            Senha = "password",
-                            Perfil = "Admin"
-                        },
-                        new Administrador
-                        {
-                            Email = "editor@test.com",
-                            Senha = "password",
-                            Perfil = "Editor"
-                        });
-                    db.SaveChanges();
-                }
-            });
-        });
+                    Email = "admin@test.com",
+                    Senha = "password",
+                    Perfil = "Admin"
+                },
+                new Administrador
+                {
+                    Email = "editor@test.com",
+                    Senha = "password",
+                    Perfil = "Editor"
+                });
+            db.SaveChanges();
+        }
     }
 
     private async Task<string> GetToken(string email, string password)

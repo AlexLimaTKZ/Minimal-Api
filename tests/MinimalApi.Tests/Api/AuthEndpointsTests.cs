@@ -1,7 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MinimalApi.Domain.Entidades;
 using MinimalApi.Domain.Entidades.DTOs;
@@ -17,37 +16,22 @@ public class AuthEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
     public AuthEndpointsTests(WebApplicationFactory<Program> factory)
     {
         _factory = factory.WithWebHostBuilder(builder =>
+            TestWebHost.Configure(builder, $"AuthEndpointsTests-{Guid.NewGuid()}"));
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<DbContexto>();
+        db.Database.EnsureCreated();
+
+        if (!db.Administradores.Any(a => a.Email == "test@admin.com"))
         {
-            TestWebHost.Configure(builder);
-
-            builder.ConfigureServices(services =>
+            db.Administradores.Add(new Administrador
             {
-                var descriptor = services.SingleOrDefault(
-                    service => service.ServiceType == typeof(DbContextOptions<DbContexto>));
-
-                if (descriptor is not null)
-                    services.Remove(descriptor);
-
-                services.AddDbContext<DbContexto>(options =>
-                    options.UseInMemoryDatabase("AuthEndpointsTests"));
-
-                using var serviceProvider = services.BuildServiceProvider();
-                using var scope = serviceProvider.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<DbContexto>();
-                db.Database.EnsureCreated();
-
-                if (!db.Administradores.Any())
-                {
-                    db.Administradores.Add(new Administrador
-                    {
-                        Email = "test@admin.com",
-                        Senha = "password",
-                        Perfil = "Admin"
-                    });
-                    db.SaveChanges();
-                }
+                Email = "test@admin.com",
+                Senha = "password",
+                Perfil = "Admin"
             });
-        });
+            db.SaveChanges();
+        }
     }
 
     [Fact]
